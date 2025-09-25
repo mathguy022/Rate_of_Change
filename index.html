@@ -1,27 +1,1733 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta
-    http-equiv="Content-Security-Policy"
-    content="
-      default-src 'self';
-      script-src 'self' 'sha256-JSkwA4IYNwPqZx/O0udmOrWB/2Zv5QcWE8qW4Ugwd48=';
-      object-src 'none';
-      base-uri 'self';
-    "
-  >
-
-  <!-- This is a sentinel value detected in code, and should not be changed -->
-  <title>file:///home/oai/redirect.html</title>
-  <script id="redirect-script">
-    // https://go/docs-link/chrome-etc-skel
-    const t = new URLSearchParams(location.search).get("target");
-    if (t) setTimeout(() => location.replace(t), 0);
-  </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rate of Change Explorer by Ahmed Said</title>
+    
+    <!-- Plotly.js for graphing -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    
+    <!-- Math.js for expression parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --secondary-color: #10b981;
+            --accent-color: #ef4444;
+            --background-color: #f9fafb;
+            --text-color: #1f2937;
+            --border-color: #e5e7eb;
+            --success-color: #22c55e;
+            --error-color: #ef4444;
+            --warning-color: #f59e0b;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+        
+        h1 {
+            color: var(--primary-color);
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #6b7280;
+            font-size: 1.1rem;
+        }
+        
+        .tutorial-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: var(--warning-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.2s;
+        }
+        
+        .tutorial-btn:hover {
+            background-color: #d97706;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .panels {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+        }
+        
+        .panel {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .controls-panel {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .graph-panel {
+            flex: 2;
+            min-height: 400px;
+        }
+        
+        .tutor-panel {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #4b5563;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+        
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        button:hover {
+            background-color: #4338ca;
+        }
+        
+        button.secondary {
+            background-color: #6b7280;
+        }
+        
+        button.secondary:hover {
+            background-color: #4b5563;
+        }
+        
+        button.success {
+            background-color: var(--success-color);
+        }
+        
+        button.success:hover {
+            background-color: #16a34a;
+        }
+        
+        button.warning {
+            background-color: var(--warning-color);
+        }
+        
+        button.warning:hover {
+            background-color: #d97706;
+        }
+        
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .mode-option {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .mode-option:hover {
+            background-color: #f3f4f6;
+        }
+        
+        .mode-option.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        
+        .step-container {
+            margin-top: 20px;
+        }
+        
+        .step {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f9fafb;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .step-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+        
+        .feedback {
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        
+        .feedback.correct {
+            background-color: #dcfce7;
+            color: #166534;
+            border-left: 4px solid var(--success-color);
+        }
+        
+        .feedback.incorrect {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid var(--error-color);
+        }
+        
+        .feedback.hint {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .feedback.detailed {
+            background-color: #fef3c7;
+            color: #92400e;
+            border-left: 4px solid var(--warning-color);
+        }
+        
+        .formula {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #f3f4f6;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .result-box {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f3f4f6;
+        }
+        
+        .result-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .result-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        @media (max-width: 768px) {
+            .panels {
+                flex-direction: column;
+            }
+            
+            .mode-selector {
+                flex-direction: column;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .tutorial-btn {
+                position: static;
+                margin-top: 10px;
+            }
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .input-group input {
+            flex: 1;
+        }
+        
+        .input-group button {
+            flex-shrink: 0;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .data-table th, .data-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .data-table th {
+            background-color: #f9fafb;
+            font-weight: 600;
+        }
+        
+        .export-options {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        /* Tutorial Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: black;
+        }
+        
+        .tutorial-nav {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        
+        .tutorial-step {
+            display: none;
+        }
+        
+        .tutorial-step.active {
+            display: block;
+        }
+        
+        .tutorial-image {
+            width: 100%;
+            max-width: 500px;
+            height: auto;
+            margin: 15px auto;
+            display: block;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+        }
+        
+        /* Formula Builder Styles */
+        .formula-builder {
+            background-color: #f3f4f6;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        
+        .formula-parts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .formula-part {
+            background-color: white;
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .formula-part:hover {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .formula-part.selected {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .formula-preview {
+            background-color: white;
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.1rem;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        .concept-example {
+            background-color: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .concept-example h4 {
+            color: #0369a1;
+            margin-bottom: 10px;
+        }
+        
+        .highlight {
+            background-color: #fef3c7;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+    </style>
 </head>
 <body>
-  The page contents are still loading. Open the page again to see them.
+    <div class="container">
+        <header>
+            <h1>Rate of Change Explorer by Ahmed Said</h1>
+            <p class="subtitle">An interactive tool to explore the average rate of change (slope of a secant line)</p>
+            <button class="tutorial-btn" id="tutorial-btn">📚 Start Tutorial</button>
+        </header>
+        
+        <div class="main-content">
+            <div class="panels">
+                <div class="panel controls-panel">
+                    <h2>Controls</h2>
+                    
+                    <div class="form-group">
+                        <label for="function-input">Function f(x):</label>
+                        <input type="text" id="function-input" value="x^2" placeholder="e.g., x^2, sin(x), 2*x+3">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="point-a">Point a:</label>
+                        <input type="number" id="point-a" value="1" step="0.1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="point-b">Point b:</label>
+                        <input type="number" id="point-b" value="3" step="0.1">
+                    </div>
+                    
+                    <button id="plot-btn">Plot Secant Line</button>
+                    <button id="random-btn" class="secondary">Generate Random Problem</button>
+                    
+                    <div class="form-group">
+                        <label>Mode:</label>
+                        <div class="mode-selector">
+                            <div class="mode-option active" data-mode="guided">Guided</div>
+                            <div class="mode-option" data-mode="quick">Quick</div>
+                            <div class="mode-option" data-mode="challenge">Challenge</div>
+                            <div class="mode-option" data-mode="realworld">Real-World</div>
+                        </div>
+                    </div>
+                    
+                    <div id="real-world-controls" class="hidden">
+                        <div class="form-group">
+                            <label for="x-values">X Values (comma separated):</label>
+                            <input type="text" id="x-values" placeholder="e.g., 0,1,2,3,4">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="y-values">Y Values (comma separated):</label>
+                            <input type="text" id="y-values" placeholder="e.g., 0,1,4,9,16">
+                        </div>
+                        
+                        <button id="plot-data-btn">Plot Data Points</button>
+                    </div>
+                    
+                    <div class="export-options">
+                        <button id="export-btn" class="secondary">Export Graph</button>
+                    </div>
+                </div>
+                
+                <div class="panel graph-panel">
+                    <h2>Graph</h2>
+                    <div id="graph"></div>
+                </div>
+            </div>
+            
+            <div class="tutor-panel">
+                <h2>Tutor & Steps</h2>
+                <div id="tutor-content">
+                    <p>Select a mode and click "Plot Secant Line" to begin exploring the rate of change.</p>
+                    <div class="formula-builder">
+                        <h4>Formula Builder</h4>
+                        <p>Click parts below to build the slope formula:</p>
+                        <div class="formula-parts">
+                            <div class="formula-part" data-formula="f(b)">f(b)</div>
+                            <div class="formula-part" data-formula="-">-</div>
+                            <div class="formula-part" data-formula="f(a)">f(a)</div>
+                            <div class="formula-part" data-formula="/">/</div>
+                            <div class="formula-part" data-formula="(">(</div>
+                            <div class="formula-part" data-formula="b">b</div>
+                            <div class="formula-part" data-formula="-">-</div>
+                            <div class="formula-part" data-formula="a">a</div>
+                            <div class="formula-part" data-formula=")">)</div>
+                        </div>
+                        <div class="formula-preview" id="formula-preview">Click parts above to build formula</div>
+                        <button id="clear-formula" class="secondary">Clear</button>
+                        <button id="check-formula" class="success">Check Formula</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tutorial Modal -->
+    <div id="tutorial-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Interactive Tutorial</h2>
+                <span class="close">&times;</span>
+            </div>
+            
+            <div class="tutorial-step active" id="tutorial-step-1">
+                <h3>What is Rate of Change?</h3>
+                <p>The <span class="highlight">average rate of change</span> measures how much a quantity changes on average between two points.</p>
+                <p>Think of it like this:</p>
+                <div class="concept-example">
+                    <h4>Real-World Example: Driving a Car</h4>
+                    <p>If you drive 60 miles in 2 hours, your average speed (rate of change) is:</p>
+                    <div class="formula">Average Speed = (60 miles - 0 miles) / (2 hours - 0 hours) = 30 mph</div>
+                    <p>This means on average, you changed your position by 30 miles every hour.</p>
+                </div>
+                <p>In mathematics, we call this the <span class="highlight">slope of the secant line</span> - a straight line connecting two points on a curve.</p>
+            </div>
+            
+            <div class="tutorial-step" id="tutorial-step-2">
+                <h3>The Formula</h3>
+                <p>The average rate of change of a function f(x) between points a and b is:</p>
+                <div class="formula">Average Rate of Change = (f(b) - f(a)) / (b - a)</div>
+                <p>Let's break this down:</p>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li><strong>f(b) - f(a)</strong>: The change in the function's output (the "rise")</li>
+                    <li><strong>b - a</strong>: The change in the input (the "run")</li>
+                    <li><strong>Division</strong>: Rise ÷ Run gives us the average rate of change</li>
+                </ul>
+                <div class="concept-example">
+                    <h4>Example: f(x) = x², a = 2, b = 5</h4>
+                    <p>f(2) = 2² = 4</p>
+                    <p>f(5) = 5² = 25</p>
+                    <p>Average Rate of Change = (25 - 4) / (5 - 2) = 21 / 3 = 7</p>
+                </div>
+            </div>
+            
+            <div class="tutorial-step" id="tutorial-step-3">
+                <h3>Visual Understanding</h3>
+                <p>On a graph, the average rate of change is the slope of the secant line:</p>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li><strong>Blue curve</strong>: Your function f(x)</li>
+                    <li><strong>Green points</strong>: The points (a, f(a)) and (b, f(b))</li>
+                    <li><strong>Red dashed line</strong>: The secant line connecting the points</li>
+                    <li><strong>Slope label</strong>: Shows the calculated rate of change</li>
+                </ul>
+                <p>The steeper the secant line, the greater the rate of change!</p>
+                <div class="concept-example">
+                    <h4>Try This:</h4>
+                    <p>1. Enter f(x) = x², a = 1, b = 3 → Slope = 4</p>
+                    <p>2. Keep f(x) = x², a = 1, b = 5 → Slope = 6</p>
+                    <p>Notice how the slope increases as the points get farther apart!</p>
+                </div>
+            </div>
+            
+            <div class="tutorial-step" id="tutorial-step-4">
+                <h3>Using the Application</h3>
+                <p>Here's how to use the Rate of Change Explorer:</p>
+                <ol style="margin-left: 20px; margin-top: 10px;">
+                    <li><strong>Enter Function</strong>: Type any mathematical function like x², sin(x), or 2*x+3</li>
+                    <li><strong>Set Points</strong>: Enter values for a and b (where b > a)</li>
+                    <li><strong>Choose Mode</strong>:
+                        <ul style="margin-left: 20px;">
+                            <li><strong>Guided</strong>: Step-by-step with hints</li>
+                            <li><strong>Quick</strong>: Direct calculation</li>
+                            <li><strong>Challenge</strong>: Test your skills</li>
+                            <li><strong>Real-World</strong>: Analyze data points</li>
+                        </ul>
+                    </li>
+                    <li><strong>Click "Plot Secant Line"</strong>: See the visualization</li>
+                    <li><strong>Follow Instructions</strong>: Complete the steps in your chosen mode</li>
+                </ol>
+                <div class="concept-example">
+                    <h4>Pro Tips:</h4>
+                    <p>• Use the "Generate Random Problem" button for practice</p>
+                    <p>• Try different functions to see how they behave</p>
+                    <p>• Use the Formula Builder to understand the structure</p>
+                </div>
+            </div>
+            
+            <div class="tutorial-step" id="tutorial-step-5">
+                <h3>Practice Makes Perfect!</h3>
+                <p>You're ready to start exploring! Here are some suggestions:</p>
+                <div class="concept-example">
+                    <h4>Beginner Practice:</h4>
+                    <p>• f(x) = 2x + 1, a = 0, b = 3 → Slope = 2</p>
+                    <p>• f(x) = x², a = 1, b = 2 → Slope = 3</p>
+                    <p>• f(x) = 3x - 2, a = -1, b = 1 → Slope = 3</p>
+                </div>
+                <div class="concept-example">
+                    <h4>Advanced Practice:</h4>
+                    <p>• f(x) = sin(x), a = 0, b = π/2 → Slope ≈ 0.637</p>
+                    <p>• f(x) = √x, a = 1, b = 4 → Slope = 0.333</p>
+                    <p>• f(x) = 2ˣ, a = 0, b = 2 → Slope = 1.5</p>
+                </div>
+                <p>Remember: The average rate of change tells us how fast the function is changing between two points. This concept is fundamental to calculus and many real-world applications!</p>
+            </div>
+            
+            <div class="tutorial-nav">
+                <button id="tutorial-prev" class="secondary">Previous</button>
+                <span id="tutorial-progress">Step 1 of 5</span>
+                <button id="tutorial-next">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Main application object
+        const RateOfChangeExplorer = {
+            // State variables
+            currentMode: 'guided',
+            functionExpression: 'x^2',
+            pointA: 1,
+            pointB: 3,
+            fA: null,
+            fB: null,
+            slope: null,
+            currentStep: 0,
+            dataPoints: [],
+            tutorialStep: 1,
+            formulaParts: [],
+            
+            // Initialize the application
+            init() {
+                this.setupEventListeners();
+                this.setupTutorial();
+                this.setupFormulaBuilder();
+                this.plotSecantLine();
+            },
+            
+            // Setup event listeners
+            setupEventListeners() {
+                // Mode selector
+                document.querySelectorAll('.mode-option').forEach(option => {
+                    option.addEventListener('click', (e) => {
+                        document.querySelectorAll('.mode-option').forEach(opt => opt.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.currentMode = e.target.dataset.mode;
+                        this.handleModeChange();
+                    });
+                });
+                
+                // Buttons
+                document.getElementById('plot-btn').addEventListener('click', () => this.plotSecantLine());
+                document.getElementById('random-btn').addEventListener('click', () => this.generateRandomProblem());
+                document.getElementById('plot-data-btn').addEventListener('click', () => this.plotDataPoints());
+                document.getElementById('export-btn').addEventListener('click', () => this.exportGraph());
+                document.getElementById('tutorial-btn').addEventListener('click', () => this.openTutorial());
+                
+                // Enter key support for inputs
+                document.getElementById('function-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.plotSecantLine();
+                });
+                
+                document.getElementById('point-a').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.plotSecantLine();
+                });
+                
+                document.getElementById('point-b').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.plotSecantLine();
+                });
+            },
+            
+            // Setup tutorial
+            setupTutorial() {
+                const modal = document.getElementById('tutorial-modal');
+                const closeBtn = document.querySelector('.close');
+                const prevBtn = document.getElementById('tutorial-prev');
+                const nextBtn = document.getElementById('tutorial-next');
+                
+                closeBtn.addEventListener('click', () => this.closeTutorial());
+                prevBtn.addEventListener('click', () => this.previousTutorialStep());
+                nextBtn.addEventListener('click', () => this.nextTutorialStep());
+                
+                // Close modal when clicking outside
+                window.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        this.closeTutorial();
+                    }
+                });
+            },
+            
+            // Setup formula builder
+            setupFormulaBuilder() {
+                const formulaParts = document.querySelectorAll('.formula-part');
+                const clearBtn = document.getElementById('clear-formula');
+                const checkBtn = document.getElementById('check-formula');
+                
+                formulaParts.forEach(part => {
+                    part.addEventListener('click', (e) => {
+                        this.addFormulaPart(e.target.dataset.formula);
+                    });
+                });
+                
+                clearBtn.addEventListener('click', () => this.clearFormula());
+                checkBtn.addEventListener('click', () => this.checkFormula());
+            },
+            
+            // Add formula part
+            addFormulaPart(part) {
+                this.formulaParts.push(part);
+                this.updateFormulaPreview();
+                
+                // Visual feedback
+                const partElement = document.querySelector(`[data-formula="${part}"]`);
+                partElement.classList.add('selected');
+                setTimeout(() => partElement.classList.remove('selected'), 200);
+            },
+            
+            // Update formula preview
+            updateFormulaPreview() {
+                const preview = document.getElementById('formula-preview');
+                if (this.formulaParts.length > 0) {
+                    preview.textContent = this.formulaParts.join(' ');
+                } else {
+                    preview.textContent = 'Click parts above to build formula';
+                }
+            },
+            
+            // Clear formula
+            clearFormula() {
+                this.formulaParts = [];
+                this.updateFormulaPreview();
+            },
+            
+            // Check if formula is correct
+            checkFormula() {
+                const preview = document.getElementById('formula-preview');
+                const correctFormula = 'f(b) - f(a) / (b - a)';
+                const userFormula = this.formulaParts.join(' ');
+                
+                if (userFormula === correctFormula) {
+                    preview.innerHTML = '<span style="color: var(--success-color);">✓ Perfect! This is the correct formula for average rate of change.</span>';
+                } else {
+                    preview.innerHTML = `<span style="color: var(--error-color);">✗ Not quite. The correct formula is: ${correctFormula}</span>`;
+                }
+            },
+            
+            // Open tutorial
+            openTutorial() {
+                document.getElementById('tutorial-modal').style.display = 'block';
+                this.tutorialStep = 1;
+                this.showTutorialStep(1);
+            },
+            
+            // Close tutorial
+            closeTutorial() {
+                document.getElementById('tutorial-modal').style.display = 'none';
+            },
+            
+            // Show tutorial step
+            showTutorialStep(step) {
+                // Hide all steps
+                document.querySelectorAll('.tutorial-step').forEach(s => s.classList.remove('active'));
+                
+                // Show current step
+                document.getElementById(`tutorial-step-${step}`).classList.add('active');
+                
+                // Update progress
+                document.getElementById('tutorial-progress').textContent = `Step ${step} of 5`;
+                
+                // Update navigation buttons
+                const prevBtn = document.getElementById('tutorial-prev');
+                const nextBtn = document.getElementById('tutorial-next');
+                
+                prevBtn.style.display = step === 1 ? 'none' : 'inline-block';
+                nextBtn.textContent = step === 5 ? 'Finish' : 'Next';
+                
+                if (step === 5) {
+                    nextBtn.onclick = () => this.closeTutorial();
+                } else {
+                    nextBtn.onclick = () => this.nextTutorialStep();
+                }
+            },
+            
+            // Next tutorial step
+            nextTutorialStep() {
+                if (this.tutorialStep < 5) {
+                    this.tutorialStep++;
+                    this.showTutorialStep(this.tutorialStep);
+                }
+            },
+            
+            // Previous tutorial step
+            previousTutorialStep() {
+                if (this.tutorialStep > 1) {
+                    this.tutorialStep--;
+                    this.showTutorialStep(this.tutorialStep);
+                }
+            },
+            
+            // Handle mode change
+            handleModeChange() {
+                const realWorldControls = document.getElementById('real-world-controls');
+                const tutorContent = document.getElementById('tutor-content');
+                
+                if (this.currentMode === 'realworld') {
+                    realWorldControls.classList.remove('hidden');
+                    tutorContent.innerHTML = '<p>Enter your data points and click "Plot Data Points" to analyze real-world data.</p>';
+                } else {
+                    realWorldControls.classList.add('hidden');
+                    tutorContent.innerHTML = '<p>Select a mode and click "Plot Secant Line" to begin exploring the rate of change.</p>';
+                }
+            },
+            
+            // Get input values
+            getInputValues() {
+                this.functionExpression = document.getElementById('function-input').value;
+                this.pointA = parseFloat(document.getElementById('point-a').value);
+                this.pointB = parseFloat(document.getElementById('point-b').value);
+            },
+            
+            // Evaluate function at a point
+            evaluateFunction(x) {
+                try {
+                    // Create a scope with x value
+                    const scope = { x: x };
+                    return math.evaluate(this.functionExpression, scope);
+                } catch (error) {
+                    console.error('Error evaluating function:', error);
+                    return null;
+                }
+            },
+            
+            // Calculate the slope of the secant line
+            calculateSlope() {
+                this.fA = this.evaluateFunction(this.pointA);
+                this.fB = this.evaluateFunction(this.pointB);
+                
+                if (this.fA === null || this.fB === null) {
+                    return null;
+                }
+                
+                if (this.pointB === this.pointA) {
+                    return null; // Avoid division by zero
+                }
+                
+                this.slope = (this.fB - this.fA) / (this.pointB - this.pointA);
+                return this.slope;
+            },
+            
+            // Generate function data for plotting
+            generateFunctionData() {
+                const data = [];
+                const minX = Math.min(this.pointA, this.pointB) - 2;
+                const maxX = Math.max(this.pointA, this.pointB) + 2;
+                const step = (maxX - minX) / 100;
+                
+                for (let x = minX; x <= maxX; x += step) {
+                    const y = this.evaluateFunction(x);
+                    if (y !== null) {
+                        data.push({ x: x, y: y });
+                    }
+                }
+                
+                return data;
+            },
+            
+            // Generate secant line data
+            generateSecantData() {
+                const minX = Math.min(this.pointA, this.pointB) - 1;
+                const maxX = Math.max(this.pointA, this.pointB) + 1;
+                
+                return [
+                    { x: minX, y: this.fA + this.slope * (minX - this.pointA) },
+                    { x: maxX, y: this.fA + this.slope * (maxX - this.pointA) }
+                ];
+            },
+            
+            // Plot the secant line and function
+            plotSecantLine() {
+                this.getInputValues();
+                
+                // Calculate slope
+                const slope = this.calculateSlope();
+                
+                if (slope === null) {
+                    this.showError('Invalid function or points. Please check your inputs.');
+                    return;
+                }
+                
+                // Generate data for plotting
+                const functionData = this.generateFunctionData();
+                const secantData = this.generateSecantData();
+                
+                // Create traces for Plotly
+                const traces = [
+                    // Function curve
+                    {
+                        x: functionData.map(point => point.x),
+                        y: functionData.map(point => point.y),
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'f(x) = ' + this.functionExpression,
+                        line: {
+                            color: 'blue',
+                            width: 3
+                        }
+                    },
+                    // Points a and b
+                    {
+                        x: [this.pointA, this.pointB],
+                        y: [this.fA, this.fB],
+                        type: 'scatter',
+                        mode: 'markers',
+                        name: 'Points',
+                        marker: {
+                            color: 'green',
+                            size: 10
+                        },
+                        text: [`(${this.pointA}, ${this.fA.toFixed(2)})`, `(${this.pointB}, ${this.fB.toFixed(2)})`]
+                    },
+                    // Secant line
+                    {
+                        x: secantData.map(point => point.x),
+                        y: secantData.map(point => point.y),
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'Secant Line',
+                        line: {
+                            color: 'red',
+                            width: 2,
+                            dash: 'dash'
+                        }
+                    }
+                ];
+                
+                // Add slope annotation
+                const annotations = [
+                    {
+                        x: (this.pointA + this.pointB) / 2,
+                        y: (this.fA + this.fB) / 2,
+                        text: `Slope = ${slope.toFixed(4)}`,
+                        showarrow: false,
+                        bgcolor: 'rgba(255, 255, 255, 0.7)',
+                        bordercolor: 'red',
+                        borderwidth: 1
+                    }
+                ];
+                
+                // Layout for the plot
+                const layout = {
+                    title: 'Function and Secant Line',
+                    xaxis: {
+                        title: 'x',
+                        gridcolor: '#e5e7eb'
+                    },
+                    yaxis: {
+                        title: 'f(x)',
+                        gridcolor: '#e5e7eb'
+                    },
+                    plot_bgcolor: '#f9fafb',
+                    paper_bgcolor: 'white',
+                    annotations: annotations
+                };
+                
+                // Plot the graph
+                Plotly.newPlot('graph', traces, layout, {responsive: true});
+                
+                // Update tutor content based on mode
+                this.updateTutorContent();
+            },
+            
+            // Update tutor content based on current mode
+            updateTutorContent() {
+                const tutorContent = document.getElementById('tutor-content');
+                
+                switch (this.currentMode) {
+                    case 'guided':
+                        this.showGuidedMode(tutorContent);
+                        break;
+                    case 'quick':
+                        this.showQuickMode(tutorContent);
+                        break;
+                    case 'challenge':
+                        this.showChallengeMode(tutorContent);
+                        break;
+                    case 'realworld':
+                        // Real world mode is handled separately
+                        break;
+                }
+            },
+            
+            // Show guided mode content
+            showGuidedMode(container) {
+                this.currentStep = 0;
+                
+                container.innerHTML = `
+                    <div class="formula">
+                        Slope = (f(b) - f(a)) / (b - a)
+                    </div>
+                    <div class="step-container" id="step-container">
+                        <div class="step">
+                            <div class="step-title">Step 1: Calculate f(a)</div>
+                            <p>For a = ${this.pointA}, f(${this.pointA}) = ?</p>
+                            <div class="input-group">
+                                <input type="number" id="step1-input" placeholder="Enter f(a)" step="0.01">
+                                <button id="step1-btn">Check</button>
+                            </div>
+                            <div id="step1-feedback"></div>
+                        </div>
+                    </div>
+                `;
+                
+                // Setup guided mode event listeners
+                document.getElementById('step1-btn').addEventListener('click', () => this.checkStep1());
+                document.getElementById('step1-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.checkStep1();
+                });
+            },
+            
+            // Check step 1 in guided mode with detailed explanation
+            checkStep1() {
+                const input = parseFloat(document.getElementById('step1-input').value);
+                const feedback = document.getElementById('step1-feedback');
+                
+                if (Math.abs(input - this.fA) < 0.01) {
+                    feedback.innerHTML = '<div class="feedback correct">Correct! f(' + this.pointA + ') = ' + this.fA.toFixed(2) + '</div>';
+                    this.showStep2();
+                } else {
+                    // Detailed explanation for wrong answer
+                    const explanation = this.getDetailedExplanation('step1', input);
+                    feedback.innerHTML = explanation;
+                }
+            },
+            
+            // Get detailed explanation for wrong answers
+            getDetailedExplanation(step, userInput) {
+                switch (step) {
+                    case 'step1':
+                        return `
+                            <div class="feedback detailed">
+                                <strong>Let's work through this together:</strong><br>
+                                <p>We need to calculate f(${this.pointA}) for the function f(x) = ${this.functionExpression}.</p>
+                                <p><strong>Step-by-step:</strong></p>
+                                <ol>
+                                    <li>Substitute x = ${this.pointA} into the function</li>
+                                    <li>f(${this.pointA}) = ${this.functionExpression.replace(/x/g, this.pointA)}</li>
+                                    <li>Calculate: ${this.getFunctionEvaluationSteps(this.pointA)}</li>
+                                    <li>Result: f(${this.pointA}) = ${this.fA.toFixed(2)}</li>
+                                </ol>
+                                <p>You entered ${userInput}. The correct answer is ${this.fA.toFixed(2)}.</p>
+                            </div>
+                        `;
+                    
+                    case 'step2':
+                        return `
+                            <div class="feedback detailed">
+                                <strong>Let's work through this together:</strong><br>
+                                <p>We need to calculate f(${this.pointB}) for the function f(x) = ${this.functionExpression}.</p>
+                                <p><strong>Step-by-step:</strong></p>
+                                <ol>
+                                    <li>Substitute x = ${this.pointB} into the function</li>
+                                    <li>f(${this.pointB}) = ${this.functionExpression.replace(/x/g, this.pointB)}</li>
+                                    <li>Calculate: ${this.getFunctionEvaluationSteps(this.pointB)}</li>
+                                    <li>Result: f(${this.pointB}) = ${this.fB.toFixed(2)}</li>
+                                </ol>
+                                <p>You entered ${userInput}. The correct answer is ${this.fB.toFixed(2)}.</p>
+                            </div>
+                        `;
+                    
+                    case 'step3':
+                        const numerator = this.fB - this.fA;
+                        return `
+                            <div class="feedback detailed">
+                                <strong>Let's work through this together:</strong><br>
+                                <p>We need to calculate the numerator: f(b) - f(a)</p>
+                                <p><strong>Step-by-step:</strong></p>
+                                <ol>
+                                    <li>f(b) = f(${this.pointB}) = ${this.fB.toFixed(2)}</li>
+                                    <li>f(a) = f(${this.pointA}) = ${this.fA.toFixed(2)}</li>
+                                    <li>Numerator = f(b) - f(a) = ${this.fB.toFixed(2)} - ${this.fA.toFixed(2)}</li>
+                                    <li>Calculate: ${numerator.toFixed(2)}</li>
+                                </ol>
+                                <p>You entered ${userInput}. The correct answer is ${numerator.toFixed(2)}.</p>
+                            </div>
+                        `;
+                    
+                    case 'step4':
+                        const denominator = this.pointB - this.pointA;
+                        return `
+                            <div class="feedback detailed">
+                                <strong>Let's work through this together:</strong><br>
+                                <p>We need to calculate the denominator: b - a</p>
+                                <p><strong>Step-by-step:</strong></p>
+                                <ol>
+                                    <li>b = ${this.pointB}</li>
+                                    <li>a = ${this.pointA}</li>
+                                    <li>Denominator = b - a = ${this.pointB} - ${this.pointA}</li>
+                                    <li>Calculate: ${denominator.toFixed(2)}</li>
+                                </ol>
+                                <p>You entered ${userInput}. The correct answer is ${denominator.toFixed(2)}.</p>
+                            </div>
+                        `;
+                    
+                    case 'step5':
+                        const num = this.fB - this.fA;
+                        const den = this.pointB - this.pointA;
+                        return `
+                            <div class="feedback detailed">
+                                <strong>Let's work through this together:</strong><br>
+                                <p>We need to calculate the slope: (f(b) - f(a)) / (b - a)</p>
+                                <p><strong>Step-by-step:</strong></p>
+                                <ol>
+                                    <li>Numerator = f(b) - f(a) = ${this.fB.toFixed(2)} - ${this.fA.toFixed(2)} = ${num.toFixed(2)}</li>
+                                    <li>Denominator = b - a = ${this.pointB} - ${this.pointA} = ${den.toFixed(2)}</li>
+                                    <li>Slope = Numerator / Denominator = ${num.toFixed(2)} / ${den.toFixed(2)}</li>
+                                    <li>Calculate: ${this.slope.toFixed(4)}</li>
+                                </ol>
+                                <p>You entered ${userInput}. The correct answer is ${this.slope.toFixed(4)}.</p>
+                            </div>
+                        `;
+                    
+                    default:
+                        return `<div class="feedback incorrect">Incorrect. The correct answer is ${this.slope.toFixed(4)}</div>`;
+                }
+            },
+            
+            // Get function evaluation steps for explanation
+            getFunctionEvaluationSteps(x) {
+                try {
+                    // For common functions, provide detailed steps
+                    if (this.functionExpression === 'x^2') {
+                        return `${x}² = ${x * x}`;
+                    } else if (this.functionExpression === 'x^3') {
+                        return `${x}³ = ${x * x * x}`;
+                    } else if (this.functionExpression.startsWith('2*x')) {
+                        const constant = this.functionExpression.includes('+') ? 
+                            this.functionExpression.split('+')[1] : '0';
+                        return `2 × ${x} + ${constant} = ${2 * x} + ${constant} = ${2 * x + parseFloat(constant)}`;
+                    } else if (this.functionExpression === 'sin(x)') {
+                        return `sin(${x}) ≈ ${Math.sin(x).toFixed(4)}`;
+                    } else if (this.functionExpression === 'cos(x)') {
+                        return `cos(${x}) ≈ ${Math.cos(x).toFixed(4)}`;
+                    } else if (this.functionExpression === 'sqrt(x)') {
+                        return `√${x} = ${Math.sqrt(x).toFixed(4)}`;
+                    } else {
+                        return `Evaluate ${this.functionExpression.replace(/x/g, x)} = ${this.evaluateFunction(x).toFixed(4)}`;
+                    }
+                } catch (error) {
+                    return `Calculation result: ${this.evaluateFunction(x).toFixed(4)}`;
+                }
+            },
+            
+            // Show step 2 in guided mode
+            showStep2() {
+                const stepContainer = document.getElementById('step-container');
+                
+                stepContainer.innerHTML += `
+                    <div class="step">
+                        <div class="step-title">Step 2: Calculate f(b)</div>
+                        <p>For b = ${this.pointB}, f(${this.pointB}) = ?</p>
+                        <div class="input-group">
+                            <input type="number" id="step2-input" placeholder="Enter f(b)" step="0.01">
+                            <button id="step2-btn">Check</button>
+                        </div>
+                        <div id="step2-feedback"></div>
+                    </div>
+                `;
+                
+                // Setup event listener
+                document.getElementById('step2-btn').addEventListener('click', () => this.checkStep2());
+                document.getElementById('step2-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.checkStep2();
+                });
+            },
+            
+            // Check step 2 in guided mode with detailed explanation
+            checkStep2() {
+                const input = parseFloat(document.getElementById('step2-input').value);
+                const feedback = document.getElementById('step2-feedback');
+                
+                if (Math.abs(input - this.fB) < 0.01) {
+                    feedback.innerHTML = '<div class="feedback correct">Correct! f(' + this.pointB + ') = ' + this.fB.toFixed(2) + '</div>';
+                    this.showStep3();
+                } else {
+                    // Detailed explanation for wrong answer
+                    const explanation = this.getDetailedExplanation('step2', input);
+                    feedback.innerHTML = explanation;
+                }
+            },
+            
+            // Show step 3 in guided mode
+            showStep3() {
+                const stepContainer = document.getElementById('step-container');
+                const numerator = this.fB - this.fA;
+                
+                stepContainer.innerHTML += `
+                    <div class="step">
+                        <div class="step-title">Step 3: Calculate the numerator (f(b) - f(a))</div>
+                        <p>f(${this.pointB}) - f(${this.pointA}) = ?</p>
+                        <div class="input-group">
+                            <input type="number" id="step3-input" placeholder="Enter numerator" step="0.01">
+                            <button id="step3-btn">Check</button>
+                        </div>
+                        <div id="step3-feedback"></div>
+                    </div>
+                `;
+                
+                // Setup event listener
+                document.getElementById('step3-btn').addEventListener('click', () => this.checkStep3());
+                document.getElementById('step3-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.checkStep3();
+                });
+            },
+            
+            // Check step 3 in guided mode with detailed explanation
+            checkStep3() {
+                const input = parseFloat(document.getElementById('step3-input').value);
+                const feedback = document.getElementById('step3-feedback');
+                const numerator = this.fB - this.fA;
+                
+                if (Math.abs(input - numerator) < 0.01) {
+                    feedback.innerHTML = '<div class="feedback correct">Correct! The numerator is ' + numerator.toFixed(2) + '</div>';
+                    this.showStep4();
+                } else {
+                    // Detailed explanation for wrong answer
+                    const explanation = this.getDetailedExplanation('step3', input);
+                    feedback.innerHTML = explanation;
+                }
+            },
+            
+            // Show step 4 in guided mode
+            showStep4() {
+                const stepContainer = document.getElementById('step-container');
+                const denominator = this.pointB - this.pointA;
+                
+                stepContainer.innerHTML += `
+                    <div class="step">
+                        <div class="step-title">Step 4: Calculate the denominator (b - a)</div>
+                        <p>${this.pointB} - ${this.pointA} = ?</p>
+                        <div class="input-group">
+                            <input type="number" id="step4-input" placeholder="Enter denominator" step="0.01">
+                            <button id="step4-btn">Check</button>
+                        </div>
+                        <div id="step4-feedback"></div>
+                    </div>
+                `;
+                
+                // Setup event listener
+                document.getElementById('step4-btn').addEventListener('click', () => this.checkStep4());
+                document.getElementById('step4-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.checkStep4();
+                });
+            },
+            
+            // Check step 4 in guided mode with detailed explanation
+            checkStep4() {
+                const input = parseFloat(document.getElementById('step4-input').value);
+                const feedback = document.getElementById('step4-feedback');
+                const denominator = this.pointB - this.pointA;
+                
+                if (Math.abs(input - denominator) < 0.01) {
+                    feedback.innerHTML = '<div class="feedback correct">Correct! The denominator is ' + denominator.toFixed(2) + '</div>';
+                    this.showStep5();
+                } else {
+                    // Detailed explanation for wrong answer
+                    const explanation = this.getDetailedExplanation('step4', input);
+                    feedback.innerHTML = explanation;
+                }
+            },
+            
+            // Show step 5 in guided mode
+            showStep5() {
+                const stepContainer = document.getElementById('step-container');
+                const numerator = this.fB - this.fA;
+                const denominator = this.pointB - this.pointA;
+                
+                stepContainer.innerHTML += `
+                    <div class="step">
+                        <div class="step-title">Step 5: Calculate the slope</div>
+                        <p>Slope = (f(b) - f(a)) / (b - a) = ?</p>
+                        <div class="input-group">
+                            <input type="number" id="step5-input" placeholder="Enter slope" step="0.01">
+                            <button id="step5-btn">Check</button>
+                            <button id="show-solution-btn" class="secondary">Show Solution</button>
+                        </div>
+                        <div id="step5-feedback"></div>
+                    </div>
+                `;
+                
+                // Setup event listeners
+                document.getElementById('step5-btn').addEventListener('click', () => this.checkStep5());
+                document.getElementById('step5-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.checkStep5();
+                });
+                document.getElementById('show-solution-btn').addEventListener('click', () => this.showSolution());
+            },
+            
+            // Check step 5 in guided mode with detailed explanation
+            checkStep5() {
+                const input = parseFloat(document.getElementById('step5-input').value);
+                const feedback = document.getElementById('step5-feedback');
+                
+                if (Math.abs(input - this.slope) < 0.01) {
+                    feedback.innerHTML = '<div class="feedback correct">Excellent! The slope is ' + this.slope.toFixed(4) + '</div>';
+                    this.showCompletionMessage();
+                } else {
+                    // Detailed explanation for wrong answer
+                    const explanation = this.getDetailedExplanation('step5', input);
+                    feedback.innerHTML = explanation;
+                }
+            },
+            
+            // Show solution
+            showSolution() {
+                const feedback = document.getElementById('step5-feedback');
+                const numerator = this.fB - this.fA;
+                const denominator = this.pointB - this.pointA;
+                
+                feedback.innerHTML = `
+                    <div class="feedback hint">
+                        <strong>Solution:</strong><br>
+                        f(${this.pointA}) = ${this.fA.toFixed(2)}<br>
+                        f(${this.pointB}) = ${this.fB.toFixed(2)}<br>
+                        Numerator = f(${this.pointB}) - f(${this.pointA}) = ${numerator.toFixed(2)}<br>
+                        Denominator = ${this.pointB} - ${this.pointA} = ${denominator.toFixed(2)}<br>
+                        Slope = ${numerator.toFixed(2)} / ${denominator.toFixed(2)} = ${this.slope.toFixed(4)}
+                    </div>
+                `;
+                
+                this.showCompletionMessage();
+            },
+            
+            // Show completion message
+            showCompletionMessage() {
+                const stepContainer = document.getElementById('step-container');
+                
+                stepContainer.innerHTML += `
+                    <div class="result-box">
+                        <div class="result-title">Great job! You've completed all steps.</div>
+                        <div class="result-value">Slope = ${this.slope.toFixed(4)}</div>
+                        <button id="new-problem-btn" class="success">Try Another Problem</button>
+                    </div>
+                `;
+                
+                document.getElementById('new-problem-btn').addEventListener('click', () => {
+                    this.generateRandomProblem();
+                });
+            },
+            
+            // Show quick mode content
+            showQuickMode(container) {
+                container.innerHTML = `
+                    <div class="formula">
+                        Slope = (f(b) - f(a)) / (b - a)
+                    </div>
+                    <div class="step">
+                        <div class="step-title">Calculate the slope of the secant line</div>
+                        <p>f(x) = ${this.functionExpression}, a = ${this.pointA}, b = ${this.pointB}</p>
+                        <div class="input-group">
+                            <input type="number" id="quick-slope-input" placeholder="Enter slope" step="0.01">
+                            <button id="quick-check-btn">Check</button>
+                            <button id="quick-hint-btn" class="secondary">Hint</button>
+                        </div>
+                        <div id="quick-feedback"></div>
+                    </div>
+                `;
+                
+                // Setup event listeners
+                document.getElementById('quick-check-btn').addEventListener('click', () => this.checkQuickMode());
+                document.getElementById('quick-slope-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.checkQuickMode();
+                });
+                document.getElementById('quick-hint-btn').addEventListener('click', () => this.showQuickHint());
+            },
+            
+            // Check quick mode answer with detailed explanation
+            checkQuickMode() {
+                const input = parseFloat(document.getElementById('quick-slope-input').value);
+                const feedback = document.getElementById('quick-feedback');
+                
+                if (Math.abs(input - this.slope) < 0.01) {
+                    feedback.innerHTML = '<div class="feedback correct">Correct! The slope is ' + this.slope.toFixed(4) + '</div>';
+                } else {
+                    // Detailed explanation for wrong answer
+                    const num = this.fB - this.fA;
+                    const den = this.pointB - this.pointA;
+                    feedback.innerHTML = `
+                        <div class="feedback detailed">
+                            <strong>Let's work through this together:</strong><br>
+                            <p>We need to calculate the slope: (f(b) - f(a)) / (b - a)</p>
+                            <p><strong>Step-by-step:</strong></p>
+                            <ol>
+                                <li>f(${this.pointA}) = ${this.fA.toFixed(2)}</li>
+                                <li>f(${this.pointB}) = ${this.fB.toFixed(2)}</li>
+                                <li>Numerator = f(b) - f(a) = ${this.fB.toFixed(2)} - ${this.fA.toFixed(2)} = ${num.toFixed(2)}</li>
+                                <li>Denominator = b - a = ${this.pointB} - ${this.pointA} = ${den.toFixed(2)}</li>
+                                <li>Slope = ${num.toFixed(2)} / ${den.toFixed(2)} = ${this.slope.toFixed(4)}</li>
+                            </ol>
+                            <p>You entered ${input}. The correct answer is ${this.slope.toFixed(4)}.</p>
+                        </div>
+                    `;
+                }
+            },
+            
+            // Show quick mode hint
+            showQuickHint() {
+                const feedback = document.getElementById('quick-feedback');
+                const numerator = this.fB - this.fA;
+                const denominator = this.pointB - this.pointA;
+                
+                feedback.innerHTML = `
+                    <div class="feedback hint">
+                        Hint: f(${this.pointA}) = ${this.fA.toFixed(2)}, f(${this.pointB}) = ${this.fB.toFixed(2)}<br>
+                        Slope = (${this.fB.toFixed(2)} - ${this.fA.toFixed(2)}) / (${this.pointB} - ${this.pointA}) = ?
+                    </div>
+                `;
+            },
+            
+            // Show challenge mode content
+            showChallengeMode(container) {
+                container.innerHTML = `
+                    <div class="step">
+                        <div class="step-title">Challenge: Calculate the slope</div>
+                        <p>Based on the graph above, what is the slope of the secant line?</p>
+                        <div class="input-group">
+                            <input type="number" id="challenge-slope-input" placeholder="Enter slope" step="0.01">
+                            <button id="challenge-check-btn">Check Answer</button>
+                            <button id="challenge-reveal-btn" class="secondary">Reveal Answer</button>
+                        </div>
+                        <div id="challenge-feedback"></div>
+                    </div>
+                `;
+                
+                // Setup event listeners
+                document.getElementById('challenge-check-btn').addEventListener('click', () => this.checkChallengeMode());
+                document.getElementById('challenge-slope-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.checkChallengeMode();
+                });
+                document.getElementById('challenge-reveal-btn').addEventListener('click', () => this.revealChallengeAnswer());
+            },
+            
+            // Check challenge mode answer with detailed explanation
+            checkChallengeMode() {
+                const input = parseFloat(document.getElementById('challenge-slope-input').value);
+                const feedback = document.getElementById('challenge-feedback');
+                
+                if (Math.abs(input - this.slope) < 0.01) {
+                    feedback.innerHTML = '<div class="feedback correct">Excellent! The slope is ' + this.slope.toFixed(4) + '</div>';
+                } else {
+                    // Detailed explanation for wrong answer
+                    const num = this.fB - this.fA;
+                    const den = this.pointB - this.pointA;
+                    feedback.innerHTML = `
+                        <div class="feedback detailed">
+                            <strong>Let's analyze the graph together:</strong><br>
+                            <p>Looking at the secant line on the graph:</p>
+                            <p><strong>Step-by-step:</strong></p>
+                            <ol>
+                                <li>Point A: (${this.pointA}, ${this.fA.toFixed(2)})</li>
+                                <li>Point B: (${this.pointB}, ${this.fB.toFixed(2)})</li>
+                                <li>Rise (change in y): ${this.fB.toFixed(2)} - ${this.fA.toFixed(2)} = ${num.toFixed(2)}</li>
+                                <li>Run (change in x): ${this.pointB} - ${this.pointA} = ${den.toFixed(2)}</li>
+                                <li>Slope = Rise / Run = ${num.toFixed(2)} / ${den.toFixed(2)} = ${this.slope.toFixed(4)}</li>
+                            </ol>
+                            <p>You estimated ${input}. The correct slope is ${this.slope.toFixed(4)}.</p>
+                        </div>
+                    `;
+                }
+            },
+            
+            // Reveal challenge mode answer
+            revealChallengeAnswer() {
+                const feedback = document.getElementById('challenge-feedback');
+                
+                feedback.innerHTML = `
+                    <div class="feedback hint">
+                        The slope is ${this.slope.toFixed(4)}
+                    </div>
+                `;
+            },
+            
+            // Generate a random problem
+            generateRandomProblem() {
+                // List of possible functions
+                const functions = [
+                    'x^2', 'x^3', '2*x+1', 'x^2+3*x', 'sin(x)', 'cos(x)', 
+                    'sqrt(x)', '1/x', 'log(x)', 'x^2-4*x+3', '2^x'
+                ];
+                
+                // Select random function
+                const randomFunction = functions[Math.floor(Math.random() * functions.length)];
+                
+                // Generate random points
+                let a, b;
+                
+                // Special handling for functions with domain restrictions
+                if (randomFunction === 'sqrt(x)' || randomFunction === 'log(x)') {
+                    a = Math.random() * 3 + 1; // Between 1 and 4
+                    b = a + Math.random() * 2 + 0.5; // Between a+0.5 and a+2.5
+                } else if (randomFunction === '1/x') {
+                    a = Math.random() * 3 + 1; // Between 1 and 4
+                    b = a + Math.random() * 2 + 0.5; // Between a+0.5 and a+2.5
+                } else {
+                    a = Math.random() * 6 - 3; // Between -3 and 3
+                    b = a + Math.random() * 2 + 0.5; // Between a+0.5 and a+2.5
+                }
+                
+                // Round to 1 decimal place
+                a = Math.round(a * 10) / 10;
+                b = Math.round(b * 10) / 10;
+                
+                // Update inputs
+                document.getElementById('function-input').value = randomFunction;
+                document.getElementById('point-a').value = a;
+                document.getElementById('point-b').value = b;
+                
+                // Plot the new problem
+                this.plotSecantLine();
+            },
+            
+            // Plot data points for real-world mode
+            plotDataPoints() {
+                const xValuesInput = document.getElementById('x-values').value;
+                const yValuesInput = document.getElementById('y-values').value;
+                
+                if (!xValuesInput || !yValuesInput) {
+                    this.showError('Please enter both X and Y values.');
+                    return;
+                }
+                
+                try {
+                    // Parse input values
+                    const xValues = xValuesInput.split(',').map(val => parseFloat(val.trim()));
+                    const yValues = yValuesInput.split(',').map(val => parseFloat(val.trim()));
+                    
+                    if (xValues.length !== yValues.length) {
+                        this.showError('X and Y values must have the same number of elements.');
+                        return;
+                    }
+                    
+                    if (xValues.length < 2) {
+                        this.showError('At least 2 data points are required.');
+                        return;
+                    }
+                    
+                    // Store data points
+                    this.dataPoints = xValues.map((x, i) => ({ x: x, y: yValues[i] }));
+                    
+                    // Create traces for Plotly
+                    const traces = [
+                        // Data points
+                        {
+                            x: xValues,
+                            y: yValues,
+                            type: 'scatter',
+                            mode: 'markers',
+                            name: 'Data Points',
+                            marker: {
+                                color: 'green',
+                                size: 10
+                            },
+                            text: xValues.map((x, i) => `(${x}, ${yValues[i]})`)
+                        }
+                    ];
+                    
+                    // Add secant line between first and last points
+                    if (xValues.length > 1) {
+                        const firstPoint = this.dataPoints[0];
+                        const lastPoint = this.dataPoints[this.dataPoints.length - 1];
+                        
+                        // Calculate slope
+                        const slope = (lastPoint.y - firstPoint.y) / (lastPoint.x - firstPoint.x);
+                        
+                        // Generate secant line data
+                        const minX = Math.min(...xValues) - 1;
+                        const maxX = Math.max(...xValues) + 1;
+                        
+                        traces.push({
+                            x: [minX, maxX],
+                            y: [
+                                firstPoint.y + slope * (minX - firstPoint.x),
+                                firstPoint.y + slope * (maxX - firstPoint.x)
+                            ],
+                            type: 'scatter',
+                            mode: 'lines',
+                            name: 'Secant Line',
+                            line: {
+                                color: 'red',
+                                width: 2,
+                                dash: 'dash'
+                            }
+                        });
+                        
+                        // Add slope annotation
+                        const layout = {
+                            title: 'Real-World Data Points',
+                            xaxis: {
+                                title: 'X Values',
+                                gridcolor: '#e5e7eb'
+                            },
+                            yaxis: {
+                                title: 'Y Values',
+                                gridcolor: '#e5e7eb'
+                            },
+                            plot_bgcolor: '#f9fafb',
+                            paper_bgcolor: 'white',
+                            annotations: [
+                                {
+                                    x: (firstPoint.x + lastPoint.x) / 2,
+                                    y: (firstPoint.y + lastPoint.y) / 2,
+                                    text: `Average Rate of Change = ${slope.toFixed(4)}`,
+                                    showarrow: false,
+                                    bgcolor: 'rgba(255, 255, 255, 0.7)',
+                                    bordercolor: 'red',
+                                    borderwidth: 1
+                                }
+                            ]
+                        };
+                        
+                        // Update tutor content
+                        const tutorContent = document.getElementById('tutor-content');
+                        tutorContent.innerHTML = `
+                            <div class="result-box">
+                                <div class="result-title">Real-World Data Analysis</div>
+                                <p>The average rate of change between the first and last data points is:</p>
+                                <div class="result-value">${slope.toFixed(4)}</div>
+                                <p>This represents the average change in Y for each unit change in X.</p>
+                                <div class="concept-example">
+                                    <h4>What this means:</h4>
+                                    <p>For every 1 unit increase in X, Y changes by approximately ${slope.toFixed(4)} units on average.</p>
+                                    <p>If X represents time and Y represents distance, this would be the average velocity.</p>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Plot the graph
+                        Plotly.newPlot('graph', traces, layout, {responsive: true});
+                    }
+                } catch (error) {
+                    this.showError('Invalid data format. Please enter comma-separated numbers.');
+                }
+            },
+            
+            // Export graph as image
+            exportGraph() {
+                Plotly.downloadImage('graph', {
+                    format: 'png',
+                    width: 1200,
+                    height: 800,
+                    filename: 'rate-of-change-explorer'
+                });
+            },
+            
+            // Show error message
+            showError(message) {
+                const tutorContent = document.getElementById('tutor-content');
+                tutorContent.innerHTML = `<div class="feedback incorrect">${message}</div>`;
+            }
+        };
+        
+        // Initialize the application when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            RateOfChangeExplorer.init();
+        });
+    </script>
 </body>
 </html>
-
